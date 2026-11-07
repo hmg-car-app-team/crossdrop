@@ -19,6 +19,8 @@
 | [NaviHelper SDK](https://document.pleos.ai/api-reference/connect-sdk-pleos/NaviHelper/intro) | 차량 기본 내비게이션 연동 SDK |
 | [Vehicle Data API](https://document.pleos.ai/api-reference/vehicle-data-api/intro) | 차량 데이터 외부 조회 REST API (2026-08 안내 기준 유럽 한정) |
 | [Pleos Connect Emulator 설치 및 실행](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator) | 소프트웨어 개발 환경 세팅 |
+| [Pleos Connect Emulator 설정](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/configure-pleos-connect-emulator) | 그래픽 카드 사양, 언어·마이크·Cold boot 설정 |
+| [Pleos Connect Virtual Console 셋업 가이드](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/use-vehicle-emulator) | 에뮬레이터에서 차량 상태·이벤트 시뮬레이션 |
 
 ## 제품 소개
 

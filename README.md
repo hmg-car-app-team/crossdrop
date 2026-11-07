@@ -12,6 +12,7 @@
 | 경로 | 내용 |
 |---|---|
 | [docs/links.md](docs/links.md) | 설명회 영상, Pleos 개발 문서, 에뮬레이터 가이드, 샘플 앱 GitHub 등 링크 모음 |
+| [docs/emulator-setup.md](docs/emulator-setup.md) | Pleos Connect Emulator 설치, AVD 생성, Virtual Console 사용 순서 요약 |
 | [docs/pleos-sdk-data.md](docs/pleos-sdk-data.md) | Vehicle SDK, NaviHelper, 위치·음성 SDK, Vehicle Data API로 쓸 수 있는 데이터와 미확인 사항 |
 | [docs/ideas.md](docs/ideas.md) | 팀 앱 아이디어 백로그 |
 | [docs/third-party-ideas.md](docs/third-party-ideas.md) | 서드파티·특허 아이디어 (기반 데이터로 보관만) |
@@ -27,7 +28,7 @@
    cd <프로젝트명>
    ```
 2. [docs/ideas.md](docs/ideas.md)에서 만들 아이디어를 고르고, [docs/pleos-sdk-data.md](docs/pleos-sdk-data.md)에서 쓸 SDK와 데이터를 정합니다.
-3. [Pleos Connect Emulator 설치 가이드](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator)대로 개발 환경을 준비합니다.
+3. [docs/emulator-setup.md](docs/emulator-setup.md)를 따라 Pleos Connect Emulator와 Virtual Console을 준비합니다.
 4. [Pleos-Playground 샘플 앱](https://github.com/Pleos-Playground)을 참고해 `app/`에 Android 프로젝트를 만듭니다.
 5. [submission/README.md](submission/README.md)의 기획서 8개 항목대로 `planning/`에 기획 초안을 씁니다.
 6. 이 README를 내 앱 소개로 바꾸고 커밋·푸시합니다.
