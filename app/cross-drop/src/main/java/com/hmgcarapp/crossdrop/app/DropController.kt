@@ -90,6 +90,11 @@ class DropController(
     private val saveGate = SaveGate(stateStore, { restored }, ::persistedCopy)
     private val navi: NaviPort = naviFactory(scope)
     private val random = SecureRandom()
+    init {
+        StateCodec.sealer = AndroidKeystoreSealer()
+        StateCodec.onSealFailure = { _state.update { it.copy(message = "연결 정보를 안전하게 저장하지 못했어요. 앱을 다시 열면 연결을 다시 해야 할 수 있어요") } }
+        StateCodec.onTokenDropped = { _state.update { it.copy(message = "저장된 연결을 확인할 수 없어요. 연결을 다시 해주세요") } }
+    }
 
     private val _state = MutableStateFlow(UiState(debuggable = debuggable, serverConfigured = serverUrl != null))
     val state: StateFlow<UiState> = _state
@@ -460,7 +465,7 @@ class DropController(
     private suspend fun restore() {
         var res = StateStore.Restored(Persisted(), corrupt = false, quarantined = false, readError = false)
         try {
-            res = withContext(Dispatchers.IO) { stateStore.restore(wallClock()) }
+            res = withContext(Dispatchers.IO) { StateCodec.sealer?.warmUp(); stateStore.restore(wallClock()) }
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
@@ -486,7 +491,8 @@ class DropController(
             if (!res.readError) vault.pruneOrphans(keep.mapNotNull { it.localName }.toSet())
         }
         _state.update { it.copy(p = p, loading = false, saveHeld = res.readError, corruptKept = res.corrupt && res.quarantined) }
-        if (gone.isNotEmpty() || res.p.pairing != p.pairing) scheduleSave()
+        // 구형식 평문 토큰은 다음 저장 때 암호화 형식으로 바뀐다(마이그레이션).
+        if (gone.isNotEmpty() || res.p.pairing != p.pairing || p.pairing != null) scheduleSave()
     }
 
     private fun scheduleSave() {
