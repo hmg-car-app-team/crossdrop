@@ -48,10 +48,27 @@ class ServerUrlPolicyTest {
         assertEquals("https://relay.example", ServerUrlPolicy.validate("https://relay.example/", false))
         assertEquals("https://relay.example:8443", ServerUrlPolicy.validate(" https://relay.example:8443 ", true))
     }
+    @Test fun normalizesAndRejectsEdgeForms() {
+        assertEquals("https://relay.example", ServerUrlPolicy.validate("HTTPS://Relay.EXAMPLE", false))
+        assertEquals("http://localhost:8780", ServerUrlPolicy.validate("http://LocalHost:8780", false))
+        assertNull(ServerUrlPolicy.validate("https://relay.example.", false))
+        assertNull(ServerUrlPolicy.validate("http://127.0.0.1:", false))
+        assertNull(ServerUrlPolicy.validate("http://127.0.0.1:0", false))
+        assertNull(ServerUrlPolicy.validate("http://127.0.0.1:65536", false))
+        assertEquals("http://127.0.0.1:65535", ServerUrlPolicy.validate("http://127.0.0.1:65535", false))
+        assertNull(ServerUrlPolicy.validate("http://2130706433:8780", false))
+        assertNull(ServerUrlPolicy.validate("https://2130706433", false))
+        assertEquals("127.0.0.1:8780", ServerUrlPolicy.hostPort("http://127.0.0.1:8780"))
+        assertNull(ServerUrlPolicy.hostPort(null))
+    }
     @Test fun cleartextOnlyForLocalHostsInDebug() {
         assertEquals("http://10.0.2.2:8780", ServerUrlPolicy.validate("http://10.0.2.2:8780", true))
         assertEquals("http://localhost:1", ServerUrlPolicy.validate("http://localhost:1", true)); assertEquals("http://127.0.0.1:2", ServerUrlPolicy.validate("http://127.0.0.1:2", true))
-        assertNull("release 에서는 로컬 http 도 거부", ServerUrlPolicy.validate("http://10.0.2.2:8780", false))
+        assertEquals("release 도 루프백(adb reverse)은 허용", "http://127.0.0.1:8780", ServerUrlPolicy.validate("http://127.0.0.1:8780", false))
+        assertEquals("http://localhost:8780", ServerUrlPolicy.validate("http://localhost:8780", false))
+        assertNull("release 에서 에뮬레이터 주소 거부", ServerUrlPolicy.validate("http://10.0.2.2:8780", false))
+        assertNull(ServerUrlPolicy.validate("http://192.168.0.5:8780", false)); assertNull(ServerUrlPolicy.validate("http://relay.example", false))
+        assertNull(ServerUrlPolicy.validate("http://127.0.0.1.evil.com:8780", false)); assertNull(ServerUrlPolicy.validate("http://[::1]:8780", false))
         assertNull(ServerUrlPolicy.validate("http://relay.example", true)); assertNull(ServerUrlPolicy.validate("http://192.168.0.5:8780", true))
     }
     @Test fun malformedAreRejected() {

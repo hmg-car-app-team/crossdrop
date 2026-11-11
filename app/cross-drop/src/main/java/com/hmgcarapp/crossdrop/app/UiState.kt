@@ -26,6 +26,8 @@ data class UiState(
     val saveHeld: Boolean = false,
     val corruptKept: Boolean = false,
     val message: String? = null,
+    /** 마지막 QR 만들기 실패 안내. 토스트(message)와 달리 다음 시도·연결 끊기·시연 전까지 연결 화면에 남는다. */
+    val pairError: String? = null,
 ) {
     /** 화면에 보여 줄 페어링(시연 중이면 시연용). */
     val pairing: PairingInfo? get() = if (demo) demoPairing else p.pairing

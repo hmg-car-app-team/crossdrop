@@ -84,6 +84,14 @@ class SyncPumpTest {
         p.finish(true); assertFalse(p.failed)
         assertNull(p.prepare(35_999, true, false, true)); assertNotNull(p.prepare(36_000, true, false, true))
     }
+    @Test fun backsOffTo60SecondsAfterFiveConsecutiveFailures() {
+        val p = pump(); var t = 0L
+        repeat(5) { assertNotNull(p.prepare(t, true, false, true)); p.finish(false); t += 30_000 }
+        assertEquals(5, p.consecutiveFailures)
+        assertNull(p.prepare(t - 30_000 + 59_999, true, false, true))
+        assertNotNull(p.prepare(t - 30_000 + 60_000, true, false, true)); p.finish(true)
+        assertEquals(0, p.consecutiveFailures)
+    }
     @Test fun neverPollsWithoutConsentSessionOrServerOrInDemo() {
         assertNull(pump().prepare(0, false, false, true))
         assertNull(pump().prepare(0, true, true, true))

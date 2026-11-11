@@ -47,15 +47,20 @@ class SourceRulesTest {
         }
         val gradle = File("build.gradle.kts").readText()
         assertFalse("빌드 스크립트에 키 변수", gradle.contains("API_KEY") || gradle.contains("apiKey"))
-        assertTrue(gradle.substringAfter("release {").substringBefore("}").contains("quoted(configuredServerUrl)"))
+        val rel = gradle.substringAfter("release {").substringBefore("}")
+        assertTrue(gradle.contains("val releaseDefaultUrl = \"http://127.0.0.1:8780\""))
+        assertTrue(rel.contains("releaseDefaultUrl") && rel.contains("configuredServerUrl"))
+        assertFalse("release 에 10.0.2.2 기본값 금지(LAN 사설 주소 위험)", rel.contains("10.0.2.2") || gradle.substringBefore("android {").contains("10.0.2.2:"))
         assertTrue(gradle.substringAfter("debug {").substringBefore("}").contains("http://10.0.2.2:8780"))
-        assertFalse("release 블록에 평문 주소 기본값 금지", gradle.substringAfter("release {").substringBefore("}").contains("http"))
     }
 
     @Test fun cleartextOnlyInDebugSourceSet() {
         val main = File("src/main/res/xml/network_security_config.xml").readText()
         assertTrue(main.contains("cleartextTrafficPermitted=\"false\""))
-        assertFalse("main(release 포함) 설정에 평문 허용 금지", main.contains("cleartextTrafficPermitted=\"true\"") || main.contains("<domain "))
+        val mainDomains = Regex("<domain[^>]*>([^<]+)</domain>").findAll(main).map { it.groupValues[1] }.toSet()
+        assertEquals("main(release 포함)에서 평문을 허용하는 주소는 루프백뿐(10.0.2.2 아님)", setOf("127.0.0.1", "localhost"), mainDomains)
+        assertEquals("평문 허용 domain-config 는 하나", 1, Regex("cleartextTrafficPermitted=\"true\"").findAll(main).count())
+        assertFalse(main.contains("includeSubdomains=\"true\""))
         val debug = File("src/debug/res/xml/network_security_config.xml").readText()
         val domains = Regex("<domain[^>]*>([^<]+)</domain>").findAll(debug).map { it.groupValues[1] }.toSet()
         assertEquals("debug 에서 평문을 허용하는 주소는 로컬 개발 주소뿐", setOf("10.0.2.2", "localhost", "127.0.0.1"), domains)
@@ -124,7 +129,7 @@ class SourceRulesTest {
         assertTrue(api.contains("instanceFollowRedirects = false")); assertTrue(api.contains("RelayWire.MAX_RESPONSE_BYTES"))
     }
 
-    @Test fun releaseHasNoServerDefault_andServerUrlPolicyIsUsed() {
+    @Test fun controllerUsesServerUrlPolicy() {
         assertTrue(main("app/DropController.kt").contains("ServerUrlPolicy.validate(serverUrlRaw, debuggable)"))
     }
 
@@ -214,5 +219,13 @@ class SourceRulesTest {
         val v = main("ui/Viewers.kt")
         assertTrue("생성한 PdfPages 는 withContext 밖 보관함에 넣고 finally 에서 닫는다", v.contains("holder.set(runCatching { PdfPages(file) }.getOrNull())") && v.contains("holder.getAndSet(null)?.let { p -> CoroutineScope(Dispatchers.IO).launch { p.close() } }") && v.indexOf("} finally {") > v.indexOf("holder.set("))
     }
-}
 
+    @Test fun pairFailureNoticeStaysUntilNextAttemptOrUserAction() {
+        val c = main("app/DropController.kt"); val ui = main("ui/Screens.kt")
+        assertTrue("실패 시 토스트와 별개로 pairError 를 남긴다", c.contains("it.copy(message = PAIR_FAIL_NOTE, pairError = PAIR_FAIL_NOTE)"))
+        assertTrue("다음 시도 시작에서 지운다", c.contains("it.copy(busy = true, pairError = null)"))
+        assertTrue("연결 끊기·시연 시작에서 지운다", c.contains("_state.update { it.copy(pairError = null) }") && c.contains("s.copy(pairError = null, demo = true"))
+        assertFalse("clearMessage 는 pairError 를 건드리지 않는다", c.substringAfter("fun clearMessage()").substringBefore("\n").contains("pairError"))
+        assertTrue("연결 화면이 pairError 를 표시한다", ui.contains("s.pairError != null ->") && ui.contains("\"pair_error\""))
+    }
+}

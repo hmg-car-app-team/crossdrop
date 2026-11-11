@@ -218,6 +218,8 @@ private fun PairPage(c: DropController, s: UiState) {
         when {
             s.demo -> Txt("시연 중이라 서버와 통신하지 않아요. 아래 QR 은 가상 주소예요.", PleosTheme.typography.labelMedium, secondary = true)
             !s.serverConfigured -> Txt("이 빌드에는 서버 주소가 없어 실제 연결은 하지 않아요. 아래 시연으로 전체 흐름을 볼 수 있어요.", PleosTheme.typography.labelMedium, secondary = true, modifier = Modifier.testTag("no_server"))
+            s.pairError != null -> Txt(s.pairError, PleosTheme.typography.labelMedium, secondary = true, modifier = Modifier.testTag("pair_error"))
+            s.sync == SyncStatus.ERROR -> Txt("서버에 연결하지 못했어요. 30초마다 다시 확인하고, 계속 안 되면 아래 시연으로 전체 흐름을 볼 수 있어요.", PleosTheme.typography.labelMedium, secondary = true, modifier = Modifier.testTag("sync_error"))
             !s.p.consent -> Txt("연결을 시작하면 휴대폰이 보내는 파일·링크가 서버를 거쳐 이 차량으로 와요. 시작 전에는 서버와 통신하지 않아요.", PleosTheme.typography.labelMedium, secondary = true)
         }
         if (status == PairStatus.CODE_EXPIRED) Txt("QR 이 만료됐어요. ‘새 QR 만들기’로 다시 만들어 주세요.", PleosTheme.typography.labelMedium, secondary = true, modifier = Modifier.testTag("qr_expired"))
@@ -229,7 +231,8 @@ private fun PairPage(c: DropController, s: UiState) {
                     QrView(payload, Modifier.size(side))
                 }
                 Txt("휴대폰 카메라로 QR 을 스캔하세요", PleosTheme.typography.titleSmall, modifier = Modifier.testTag("qr_hint"))
-                Txt("QR 을 읽지 못하면 휴대폰을 화면에 더 가까이 대고 화면 밝기를 확인해 주세요. 이 QR 은 10분 안에 한 번만 쓸 수 있어요.", PleosTheme.typography.labelMedium, secondary = true, modifier = Modifier.testTag("qr_hint_text"))
+                if (!s.demo && c.serverBase()?.startsWith("https:") == false) Txt("이 QR 은 이 기기 자신(루프백) 주소라 실제 폰에서는 열리지 않아요. 폰 연결에는 https 서버 주소가 필요해요.", PleosTheme.typography.labelMedium, secondary = true, modifier = Modifier.testTag("qr_local_note"))
+            Txt("QR 을 읽지 못하면 휴대폰을 화면에 더 가까이 대고 화면 밝기를 확인해 주세요. 이 QR 은 10분 안에 한 번만 쓸 수 있어요.", PleosTheme.typography.labelMedium, secondary = true, modifier = Modifier.testTag("qr_hint_text"))
             } else Txt("휴대폰에서 파일·링크를 보내면 여기에 도착해요. 휴대폰이 30분 넘게 연결돼 있었다면 ‘새 QR 만들기’로 다시 연결해 주세요.", secondary = true)
         }
         if (!s.demo && s.serverConfigured) {
@@ -252,6 +255,7 @@ private fun PairPage(c: DropController, s: UiState) {
         content = {
             Column(Modifier.heightIn(max = PleosTheme.dimensions.popupMaxHeight * 0.5f).verticalScroll(rememberScrollState()).testTag("consent_body"), verticalArrangement = Arrangement.spacedBy(PleosSpacing.s)) {
                 PrivacyText.CONSENT_PARAGRAPHS.forEach { Txt(it, PleosTheme.typography.bodyMedium, secondary = true) }
+                Txt(PrivacyText.destination(c.serverHostPort()), PleosTheme.typography.bodyMedium, secondary = true, modifier = Modifier.testTag("consent_dest"))
             }
         },
     )

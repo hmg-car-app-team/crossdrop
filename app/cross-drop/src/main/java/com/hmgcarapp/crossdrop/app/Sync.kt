@@ -46,8 +46,11 @@ class SyncPump(
     private val serverUrl: String?,
     private val everyMs: Long = EVERY_MS,
     private val errorEveryMs: Long = ERROR_EVERY_MS,
+    private val longErrorEveryMs: Long = LONG_ERROR_EVERY_MS,
 ) {
     var failed: Boolean = false; private set
+    /** 연속 실패 횟수: [BACKOFF_AFTER] 회 이상이면 재시도 간격을 [longErrorEveryMs] 로 늘린다. 성공하면 0. */
+    var consecutiveFailures: Int = 0; private set
     private var inFlight = false
     private var lastAt: Long? = null
 
@@ -63,14 +66,16 @@ class SyncPump(
     fun prepare(nowMs: Long, consent: Boolean, demo: Boolean, hasSession: Boolean): RelayApi? {
         val a = api ?: return null
         if (inFlight || !SyncGate.mayPoll(status(consent, demo, hasSession))) return null
-        lastAt?.let { if (nowMs - it < (if (failed) errorEveryMs else everyMs)) return null }
+        lastAt?.let { if (nowMs - it < (if (!failed) everyMs else if (consecutiveFailures >= BACKOFF_AFTER) longErrorEveryMs else errorEveryMs)) return null }
         lastAt = nowMs; inFlight = true
         return a
     }
 
-    fun finish(ok: Boolean) { failed = !ok; inFlight = false }
+    fun finish(ok: Boolean) { failed = !ok; consecutiveFailures = if (ok) 0 else consecutiveFailures + 1; inFlight = false }
 
-    companion object { const val EVERY_MS = 5_000L; const val ERROR_EVERY_MS = 30_000L }
+    companion object { const val EVERY_MS = 5_000L; const val ERROR_EVERY_MS = 30_000L
+        const val BACKOFF_AFTER = 5
+        const val LONG_ERROR_EVERY_MS = 60_000L }
 }
 
 data class ReceiveResult(

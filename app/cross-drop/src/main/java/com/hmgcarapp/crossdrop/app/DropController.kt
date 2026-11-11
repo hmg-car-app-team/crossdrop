@@ -194,6 +194,8 @@ class DropController(
 
     /** QR 에 쓰는 검증된 서버 기본 주소(없으면 null). */
     fun serverBase(): String? = serverUrl
+    /** 고지용 '호스트:포트'(서버 주소가 없으면 null). */
+    fun serverHostPort(): String? = ServerUrlPolicy.hostPort(serverUrl)
 
     // ---------- 연결(페어링) ----------
     /** 서버 연결에 동의하고 새 QR 을 만든다. [agree] 는 동의 팝업에서 사용자가 누른 결과. */
@@ -207,7 +209,7 @@ class DropController(
         if (_state.value.busy) return@parkedOnly
         // 새 QR 을 만들기 전에 이전 세션을 서버에서 지운다(코드 만료 세션이 서버 슬롯을 차지하지 않게)
         _state.value.p.pairing?.let { old -> pollJob?.cancel(); deleteRemoteSession(old.deviceToken) }
-        _state.update { it.copy(busy = true) }
+        _state.update { it.copy(busy = true, pairError = null) }
         scope.launch {
             try {
                 val grant = api.createSession()
@@ -219,7 +221,7 @@ class DropController(
                 throw e
             } catch (t: Throwable) {
                 HmgLog.w("Pair", "세션 만들기 실패: ${t.javaClass.simpleName}")
-                _state.update { it.copy(message = "서버에 연결하지 못했어요") }
+                _state.update { it.copy(message = PAIR_FAIL_NOTE, pairError = PAIR_FAIL_NOTE) }
             } finally { _state.update { it.copy(busy = false) } }
         }
     }
@@ -231,6 +233,7 @@ class DropController(
         val info = _state.value.p.pairing
         pollJob?.cancel()      // 진행 중인 폴링이 삭제·철회 뒤에 결과를 반영하지 못하게(pollOnce 의 PollGuard 가 한 번 더 막는다)
         updateP { it.copy(pairing = null) }
+        _state.update { it.copy(pairError = null) }
         handledRemote.clear(); retryCounts.clear()
         if (info != null) deleteRemoteSession(info.deviceToken)
     }
@@ -377,7 +380,7 @@ class DropController(
         _state.update { s ->
             if (s.demo) s else {
                 val now = wallClock()
-                s.copy(demo = true, demoPairing = PairingInfo(DemoAssets.DEMO_CODE, DemoAssets.DEMO_TOKEN, now, now + 600_000L, now + Retention.TTL_MS))
+                s.copy(pairError = null, demo = true, demoPairing = PairingInfo(DemoAssets.DEMO_CODE, DemoAssets.DEMO_TOKEN, now, now + 600_000L, now + Retention.TTL_MS))
             }
         }
     }
@@ -535,6 +538,7 @@ class DropController(
     }
 
     companion object {
+        const val PAIR_FAIL_NOTE = "서버에 연결하지 못했어요. 잠시 후 다시 시도하거나 아래 시연을 사용해 주세요"
         const val TICK_MS = 1_000L
         const val PRUNE_EVERY_MS = 30_000L
         const val BANNER_MS = 8_000L
