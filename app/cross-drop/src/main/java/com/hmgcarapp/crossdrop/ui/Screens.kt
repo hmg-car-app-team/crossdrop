@@ -3,6 +3,7 @@ package com.hmgcarapp.crossdrop.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +32,9 @@ import com.hmgcarapp.crossdrop.domain.InboxItem
 import com.hmgcarapp.crossdrop.domain.ItemKind
 import com.hmgcarapp.crossdrop.domain.Page
 import com.hmgcarapp.crossdrop.domain.PairStatus
+import com.hmgcarapp.crossdrop.domain.PairStep
+import com.hmgcarapp.crossdrop.domain.PairSteps
+import com.hmgcarapp.crossdrop.domain.StepState
 import com.hmgcarapp.crossdrop.domain.Pairing
 import com.hmgcarapp.crossdrop.domain.PrivacyText
 import com.hmgcarapp.crossdrop.domain.Retention
@@ -59,6 +63,13 @@ private fun pairKind(s: PairStatus) = when (s) {
     PairStatus.WAITING -> PleosStatus.Active
     PairStatus.CODE_EXPIRED, PairStatus.ENDED -> PleosStatus.Negative
     PairStatus.NONE -> PleosStatus.Neutral
+}
+
+private fun stepKind(st: PairStep) = when (st.state) {
+    StepState.DONE -> PleosStatus.Positive
+    StepState.CURRENT -> PleosStatus.Active
+    StepState.FAILED -> PleosStatus.Negative
+    StepState.PENDING -> PleosStatus.Neutral
 }
 
 private fun sizeText(b: Long) = if (b >= 1_048_576) String.format(Locale.KOREA, "%.1fMB", b / 1_048_576.0) else "${maxOf(1L, b / 1024)}KB"
@@ -157,15 +168,29 @@ private fun InboxPage(c: DropController, s: UiState) {
         else PleosButton("일시정지", onClick = { c.pauseMusic() }, hierarchy = PleosButtonHierarchy.Secondary, modifier = Modifier.testTag("music_pause"))
         PleosButton("정지", onClick = { c.stopMusic() }, hierarchy = PleosButtonHierarchy.Secondary, modifier = Modifier.testTag("music_stop"))
     }
+    var askAll by remember { mutableStateOf(false) }
     PleosPanel(Modifier.fillMaxWidth(), title = "받은 항목 ${s.p.items.size}개") {
         if (s.p.items.isEmpty()) {
             // 디자인시스템에 빈 상태 컴포넌트가 없어 글줄로 대체(docs/apps/cross-drop.md 기록)
             Txt("아직 받은 항목이 없어요. ‘휴대폰 연결’에서 QR 을 스캔해 보내 보세요.", secondary = true, modifier = Modifier.testTag("inbox_empty"))
         }
         s.p.items.asReversed().forEach { item -> ItemRow(c, s, item, fmt, now) }
-        if (s.p.items.isNotEmpty()) Txt("받은 항목은 24시간 뒤 이 기기에서 자동으로 삭제돼요.", PleosTheme.typography.labelMedium, secondary = true)
+        if (s.p.items.isNotEmpty()) {
+            Txt("받은 항목은 24시간 뒤 이 기기에서 자동으로 삭제돼요.", PleosTheme.typography.labelMedium, secondary = true)
+            // 정차 중에만 보이는 화면이다(주행 중에는 DrivingView). 삭제는 설정과 같은 확인 팝업·같은 삭제 동작을 쓴다.
+            Txt(PrivacyText.RETURN_NOTICE, secondary = true, modifier = Modifier.testTag("return_notice"))
+            PleosButton("받은 항목 모두 삭제", onClick = { askAll = true }, hierarchy = PleosButtonHierarchy.Secondary, modifier = Modifier.testTag("inbox_clear_all"))
+        }
     }
+    if (askAll) ClearAllPopup(c) { askAll = false }
 }
+
+@Composable
+private fun ClearAllPopup(c: DropController, onClose: () -> Unit) = PleosPopup(
+    title = "받은 항목을 모두 삭제할까요?",
+    description = "받은 사진·PDF·음악·목적지가 이 기기에서 삭제되고, 서버에 남은 내 연결도 지우도록 요청해요.\n되돌릴 수 없어요.",
+    confirmLabel = "삭제", onConfirm = { onClose(); c.deleteAll() }, onDismissRequest = onClose, cancelLabel = "취소",
+)
 
 @Composable
 private fun ItemRow(c: DropController, s: UiState, item: InboxItem, fmt: SimpleDateFormat, now: Long) {
@@ -209,12 +234,20 @@ private fun ViewerScreen(c: DropController, item: InboxItem) {
 @Composable
 private fun PairPage(c: DropController, s: UiState) {
     val pairing = s.pairing
-    val status = if (s.demo) Pairing.status(pairing, c.nowWall()) else s.pairStatus
+    val rawStatus = if (s.demo) Pairing.status(pairing, c.nowWall()) else s.pairStatus
+    // 세션이 끝나 정보가 사라져도 만료 표시는 다음 시도까지 유지한다(pairError 와 같은 설계)
+    val status = if (!s.demo && s.pairExpired && pairing == null && rawStatus == PairStatus.NONE) PairStatus.CODE_EXPIRED else rawStatus
     var ask by remember { mutableStateOf(false) }
     var askNew by remember { mutableStateOf(false) }
     PleosPanel(Modifier.fillMaxWidth(), title = "휴대폰 연결 (아이폰·안드로이드 모두)") {
         PleosStatusBadge(Pairing.badgeLabel(status, s.sync == SyncStatus.ERROR), if (Pairing.connectionUnconfirmed(status, s.sync == SyncStatus.ERROR)) PleosStatus.Neutral else pairKind(status), Modifier.testTag("pair_status"))
         Txt(s.sync.label, PleosTheme.typography.labelMedium, secondary = true, modifier = Modifier.testTag("sync_label"))
+        if (s.demo || s.serverConfigured) {
+            val failed = !s.demo && (s.pairError != null || s.sync == SyncStatus.ERROR)
+            Row(horizontalArrangement = Arrangement.spacedBy(PleosSpacing.s), modifier = Modifier.testTag("pair_steps")) {
+                PairSteps.of(status, failed, s.busy && pairing == null).forEach { PleosStatusBadge(it.text, stepKind(it), Modifier.testTag("pair_step_${it.no}")) }
+            }
+        }
         when {
             s.demo -> Txt("시연 중이라 서버와 통신하지 않아요. 아래 QR 은 가상 주소예요.", PleosTheme.typography.labelMedium, secondary = true)
             !s.serverConfigured -> Txt("이 빌드에는 서버 주소가 없어 실제 연결은 하지 않아요. 아래 시연으로 전체 흐름을 볼 수 있어요.", PleosTheme.typography.labelMedium, secondary = true, modifier = Modifier.testTag("no_server"))
@@ -318,11 +351,7 @@ private fun PrivacyPage(c: DropController, s: UiState) {
     PleosPanel(Modifier.fillMaxWidth(), title = "알아두세요") {
         Txt("사진·PDF·QR 은 정차(P단) 중에만 볼 수 있고 주행을 시작하면 자동으로 닫혀요. 주행 중에는 음성 안내와 음악 재생만 해요. 모르는 사람이 보낸 파일을 열지 마세요. 이 앱은 영상을 재생하지 않아요.", PleosTheme.typography.labelMedium, secondary = true)
     }
-    if (askAll) PleosPopup(
-        title = "받은 항목을 모두 삭제할까요?",
-        description = "받은 사진·PDF·음악·목적지가 이 기기에서 삭제되고, 서버에 남은 내 연결도 지우도록 요청해요.\n되돌릴 수 없어요.",
-        confirmLabel = "삭제", onConfirm = { askAll = false; c.deleteAll() }, onDismissRequest = { askAll = false }, cancelLabel = "취소",
-    )
+    if (askAll) ClearAllPopup(c) { askAll = false }
     if (askRevoke) PleosPopup(
         title = "서버 연결을 끊을까요?",
         description = "휴대폰 연결을 끊고 서버에 남은 파일을 지우도록 요청한 뒤, 다시 연결할 때 동의를 새로 받아요. 받은 항목은 그대로예요.",

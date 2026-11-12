@@ -28,6 +28,8 @@ data class UiState(
     val message: String? = null,
     /** 마지막 QR 만들기 실패 안내. 토스트(message)와 달리 다음 시도·연결 끊기·시연 전까지 연결 화면에 남는다. */
     val pairError: String? = null,
+    /** 연결되지 않은 채 QR/세션이 끝났다(만료). 세션 정보가 사라져도 다음 시도(새 QR·시연·연결 끊기)까지 '2 QR 만료' 표시를 유지한다. */
+    val pairExpired: Boolean = false,
 ) {
     /** 화면에 보여 줄 페어링(시연 중이면 시연용). */
     val pairing: PairingInfo? get() = if (demo) demoPairing else p.pairing

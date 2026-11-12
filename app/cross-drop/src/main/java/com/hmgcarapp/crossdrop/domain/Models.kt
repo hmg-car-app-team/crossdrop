@@ -78,6 +78,46 @@ enum class PairStatus(val label: String) {
     NONE("연결 안 됨"), WAITING("휴대폰 연결을 기다리는 중"), CODE_EXPIRED("QR 이 만료됐어요"), CONNECTED("휴대폰 연결됨"), ENDED("연결이 끝났어요"),
 }
 
+/** 연결 단계 표시용 상태. */
+enum class StepState { PENDING, CURRENT, DONE, FAILED }
+
+/** 연결 화면의 한 단계. [text] 는 색에 의존하지 않고 상태를 글로도 알려 준다. */
+data class PairStep(val no: Int, val state: StepState) {
+    val text: String get() = when (state) {
+        StepState.PENDING -> "$no ${PairSteps.LABELS[no - 1]}"
+        StepState.CURRENT -> "$no ${PairSteps.ACTIVE[no - 1]}"
+        StepState.DONE -> if (no == PairSteps.COUNT) "$no ${PairSteps.LABELS[no - 1]}" else "$no ${PairSteps.LABELS[no - 1]} 완료"
+        StepState.FAILED -> "$no ${PairSteps.FAILED[no - 1]}"
+    }
+}
+
+/**
+ * 연결 단계(1 서버 확인 → 2 QR 표시 → 3 폰 연결 대기 → 4 연결됨)를 기존 상태 값만으로 조합한다(순수; 서버·저장 변경 없음).
+ * [failed] 는 서버 오류(동기화 실패) 또는 QR 만들기 실패. 실패는 해당 단계에 표시하며 화면의 한국어 실패 안내와 같은 시점에만 켜진다.
+ */
+object PairSteps {
+    const val COUNT = 4
+    val LABELS = listOf("서버 확인", "QR 표시", "폰 연결 대기", "연결됨")
+    val ACTIVE = listOf("서버 확인 중", "QR 표시 중", "폰 연결 대기 중", "연결됨")
+    val FAILED = listOf("서버 확인 실패", "QR 만료", "폰 연결 확인 실패", "연결 확인 실패")
+
+    fun of(status: PairStatus, failed: Boolean, busy: Boolean): List<PairStep> {
+        fun build(done: Int, cur: StepState?) = (1..COUNT).map { n ->
+            PairStep(n, when {
+                n <= done -> StepState.DONE
+                n == done + 1 && cur != null -> cur
+                else -> StepState.PENDING
+            })
+        }
+        return when (status) {
+            PairStatus.NONE, PairStatus.ENDED -> build(0, if (failed) StepState.FAILED else if (busy) StepState.CURRENT else null)
+            PairStatus.CODE_EXPIRED -> build(1, StepState.FAILED)
+            PairStatus.WAITING -> build(2, if (failed) StepState.FAILED else StepState.CURRENT)
+            PairStatus.CONNECTED -> if (failed) build(3, StepState.FAILED) else build(COUNT, null)
+        }
+    }
+}
+
 object Pairing {
     val CODE_REGEX = Regex("^[A-HJ-NP-Z2-9]{8}$")
     val TOKEN_REGEX = Regex("^[0-9a-f]{64}$")

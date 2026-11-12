@@ -223,8 +223,8 @@ class SourceRulesTest {
     @Test fun pairFailureNoticeStaysUntilNextAttemptOrUserAction() {
         val c = main("app/DropController.kt"); val ui = main("ui/Screens.kt")
         assertTrue("실패 시 토스트와 별개로 pairError 를 남긴다", c.contains("it.copy(message = PAIR_FAIL_NOTE, pairError = PAIR_FAIL_NOTE)"))
-        assertTrue("다음 시도 시작에서 지운다", c.contains("it.copy(busy = true, pairError = null)"))
-        assertTrue("연결 끊기·시연 시작에서 지운다", c.contains("_state.update { it.copy(pairError = null) }") && c.contains("s.copy(pairError = null, demo = true"))
+        assertTrue("다음 시도 시작에서 지운다", c.contains("it.copy(busy = true, pairError = null, pairExpired = false)"))
+        assertTrue("연결 끊기·시연 시작에서 지운다", c.contains("_state.update { it.copy(pairError = null, pairExpired = false) }") && c.contains("s.copy(pairError = null, pairExpired = false, demo = true"))
         assertFalse("clearMessage 는 pairError 를 건드리지 않는다", c.substringAfter("fun clearMessage()").substringBefore("\n").contains("pairError"))
         assertTrue("연결 화면이 pairError 를 표시한다", ui.contains("s.pairError != null ->") && ui.contains("\"pair_error\""))
     }

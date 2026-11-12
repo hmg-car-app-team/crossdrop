@@ -209,7 +209,7 @@ class DropController(
         if (_state.value.busy) return@parkedOnly
         // 새 QR 을 만들기 전에 이전 세션을 서버에서 지운다(코드 만료 세션이 서버 슬롯을 차지하지 않게)
         _state.value.p.pairing?.let { old -> pollJob?.cancel(); deleteRemoteSession(old.deviceToken) }
-        _state.update { it.copy(busy = true, pairError = null) }
+        _state.update { it.copy(busy = true, pairError = null, pairExpired = false) }
         scope.launch {
             try {
                 val grant = api.createSession()
@@ -233,7 +233,7 @@ class DropController(
         val info = _state.value.p.pairing
         pollJob?.cancel()      // 진행 중인 폴링이 삭제·철회 뒤에 결과를 반영하지 못하게(pollOnce 의 PollGuard 가 한 번 더 막는다)
         updateP { it.copy(pairing = null) }
-        _state.update { it.copy(pairError = null) }
+        _state.update { it.copy(pairError = null, pairExpired = false) }
         handledRemote.clear(); retryCounts.clear()
         if (info != null) deleteRemoteSession(info.deviceToken)
     }
@@ -290,7 +290,7 @@ class DropController(
         val s = _state.value
         val sync = pump.status(s.p.consent, s.demo, s.p.pairing != null && ps != PairStatus.ENDED)
         if (ps != s.pairStatus || sync != s.sync) _state.update { it.copy(pairStatus = ps, sync = sync) }
-        if (!s.demo && s.p.pairing != null && ps == PairStatus.ENDED) { endPairingInternal(); return }
+        if (!s.demo && s.p.pairing != null && ps == PairStatus.ENDED) { val unclaimed = !s.p.pairing.claimed; endPairingInternal(); if (unclaimed) _state.update { it.copy(pairExpired = true) }; return }
         val info = s.p.pairing ?: return
         if (polling) return
         val api = pump.prepare(mono, s.p.consent, s.demo, ps != PairStatus.ENDED) ?: return
@@ -328,8 +328,9 @@ class DropController(
             if (res.rejected > 0) _state.update { it.copy(message = "안전하지 않거나 지원하지 않는 파일 ${res.rejected}개는 받지 않았어요") }
             if (res.sessionEnded) {
                 val msg = SessionEndText.of(_state.value.p.pairing?.claimed)
+                val unclaimed = _state.value.p.pairing?.claimed == false
                 updateP { it.copy(pairing = null) }
-                _state.update { it.copy(message = msg) }
+                _state.update { it.copy(message = msg, pairExpired = unclaimed || it.pairExpired) }
             }
             pump.finish(true)
         } catch (e: CancellationException) {
@@ -339,7 +340,8 @@ class DropController(
             if (e.status == 401) {
                 if (PollGuard.stillCurrent(_state.value.p, token)) {
                     val msg = SessionEndText.of(_state.value.p.pairing?.claimed)    // claim 안 된 세션이면 'QR 이 만료됐어요'
-                    updateP { it.copy(pairing = null) }; _state.update { it.copy(message = msg) }
+                    val unclaimed = _state.value.p.pairing?.claimed == false
+                    updateP { it.copy(pairing = null) }; _state.update { it.copy(message = msg, pairExpired = unclaimed || it.pairExpired) }
                 }
                 pump.finish(true)
             } else pump.finish(false)
@@ -380,7 +382,7 @@ class DropController(
         _state.update { s ->
             if (s.demo) s else {
                 val now = wallClock()
-                s.copy(pairError = null, demo = true, demoPairing = PairingInfo(DemoAssets.DEMO_CODE, DemoAssets.DEMO_TOKEN, now, now + 600_000L, now + Retention.TTL_MS))
+                s.copy(pairError = null, pairExpired = false, demo = true, demoPairing = PairingInfo(DemoAssets.DEMO_CODE, DemoAssets.DEMO_TOKEN, now, now + 600_000L, now + Retention.TTL_MS))
             }
         }
     }
