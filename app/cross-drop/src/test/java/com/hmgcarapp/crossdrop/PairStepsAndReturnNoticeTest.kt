@@ -2,7 +2,6 @@ package com.hmgcarapp.crossdrop
 
 import com.hmgcarapp.crossdrop.domain.PairStatus
 import com.hmgcarapp.crossdrop.domain.PairSteps
-import com.hmgcarapp.crossdrop.domain.PrivacyText
 import com.hmgcarapp.crossdrop.domain.StepState
 import com.hmgcarapp.crossdrop.domain.StepState.CURRENT
 import com.hmgcarapp.crossdrop.domain.StepState.DONE
@@ -14,7 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/** 연결 단계 표시(기존 상태 값 조합)와 받은 항목 화면의 반납 전 삭제 안내. */
+/** 연결 단계 표시(기존 상태 값 조합)와 받은 항목 화면의 삭제 진입점. */
 class PairStepsAndReturnNoticeTest {
     private fun states(status: PairStatus, failed: Boolean = false, busy: Boolean = false): List<StepState> = PairSteps.of(status, failed, busy).map { it.state }
     private val ui = File("src/main/java/com/hmgcarapp/crossdrop/ui/Screens.kt").readText()
@@ -51,9 +50,9 @@ class PairStepsAndReturnNoticeTest {
     @Test fun screenShowsStepsOnlyForRealOrDemoConnectionAndFailureMatchesGuidance() {
         assertTrue(ui.contains("PairSteps.of(status, failed, s.busy && pairing == null)"))
         assertTrue(ui.contains("if (s.demo || s.serverConfigured)"))
-        // 실패는 한국어 실패 안내(pair_error / sync_error)가 켜지는 조건과 같다
+        // 실패는 단계 배지(실패 표시)와 토스트로만 알린다(pair_error·sync_error·QR 만료 부연 문구 없음)
         assertTrue(ui.contains("val failed = !s.demo && (s.pairError != null || s.sync == SyncStatus.ERROR)"))
-        assertTrue(ui.contains("testTag(\"pair_error\")") && ui.contains("testTag(\"sync_error\")"))
+        assertFalse(ui.contains("testTag(\"pair_error\")") || ui.contains("testTag(\"sync_error\")") || ui.contains("testTag(\"qr_expired\")"))
     }
 
     @Test fun expiredStateIsKeptUntilNextAttempt() {
@@ -62,7 +61,7 @@ class PairStepsAndReturnNoticeTest {
         assertTrue("미연결 세션 종료(만료)에서 켠다", c.contains("val unclaimed = !s.p.pairing.claimed; endPairingInternal(); if (unclaimed) _state.update { it.copy(pairExpired = true) }"))
         assertTrue("폴링 종료·401 에서도 켠다", c.split("pairExpired = unclaimed || it.pairExpired").size - 1 == 2)
         assertTrue("새 시도·연결 끊기·시연에서 끈다", c.contains("busy = true, pairError = null, pairExpired = false") && c.contains("pairError = null, pairExpired = false) }") && c.contains("pairError = null, pairExpired = false, demo = true"))
-        assertTrue("세션 정보가 없어도 만료 단계·안내를 유지한다", scr.contains("s.pairExpired && pairing == null && rawStatus == PairStatus.NONE) PairStatus.CODE_EXPIRED"))
+        assertTrue("세션 정보가 없어도 만료 단계를 유지한다", scr.contains("s.pairExpired && pairing == null && rawStatus == PairStatus.NONE) PairStatus.CODE_EXPIRED"))
         assertEquals("만료 유지 시 단계 2 실패 표시", "2 QR 만료", PairSteps.of(PairStatus.CODE_EXPIRED, false, false)[1].text)
     }
 
@@ -72,16 +71,24 @@ class PairStepsAndReturnNoticeTest {
         assertEquals(listOf("1 서버 확인", "2 QR 표시", "3 폰 연결 대기", "4 연결됨"), PairSteps.of(PairStatus.NONE, false, false).map { it.text })   // 완료·진행 중·실패 접미사 없음
     }
 
-    @Test fun returnNoticeAndClearButtonOnInboxUseTheSameDeleteFlow() {
-        assertEquals("공유차·렌터카를 반납하기 전에 받은 항목을 모두 삭제하세요.", PrivacyText.RETURN_NOTICE)
+    @Test fun inboxClearButtonIsTheOnlyDeleteEntryAndReturnNoticeIsGone() {
+        assertFalse(ui.contains("RETURN_NOTICE") || ui.contains("return_notice") || ui.contains("PrivacyPage") || ui.contains("\"clear_all\"") || ui.contains("\"revoke\""))
         val inbox = ui.substring(ui.indexOf("private fun InboxPage"), ui.indexOf("private fun ItemRow"))
-        assertTrue(inbox.contains("PrivacyText.RETURN_NOTICE") && inbox.contains("받은 항목 모두 삭제") && inbox.contains("ClearAllPopup(c)"))
-        assertTrue("항목이 있을 때만", inbox.indexOf("s.p.items.isNotEmpty()") in 0 until inbox.indexOf("RETURN_NOTICE"))
-        // 삭제 확인 팝업은 설정 화면과 하나를 공유하고, 확인 시 기존 deleteAll(정차 가드) 만 호출한다
-        assertEquals(2, Regex("ClearAllPopup\\(c\\)").findAll(ui).count())
+        assertTrue(inbox.contains("받은 항목 모두 삭제") && inbox.contains("ClearAllPopup(c)") && inbox.contains("inbox_clear_all"))
+        assertTrue("항목이 있을 때만", inbox.indexOf("s.p.items.isNotEmpty()") in 0 until inbox.indexOf("받은 항목 모두 삭제"))
+        assertEquals(1, Regex("ClearAllPopup\\(c\\)").findAll(ui).count())
         assertEquals(1, Regex("c\\.deleteAll\\(\\)").findAll(ui).count())
-        // 받은 항목 페이지는 정차 화면(Parked) 안에서만 그려진다
+        assertTrue("연결 끊기는 연결 화면에 유지", ui.contains("btn_unpair") && ui.contains("c.revokeConsent()") && !ui.contains("c.endPairing()"))
         assertTrue(ui.indexOf("Page.INBOX -> InboxPage(c, s)") > ui.indexOf("private fun Parked"))
         assertFalse(ui.substring(ui.indexOf("private fun DrivingView"), ui.indexOf("private fun Parked")).contains("deleteAll"))
+    }
+
+    @Test fun pageTabsAreInboxAndPairOnly() {
+        assertEquals(listOf("INBOX", "PAIR"), com.hmgcarapp.crossdrop.domain.Page.entries.map { it.name })
+    }
+
+    @Test fun removedSideTextsStayRemoved() {
+        for (gone in listOf("시간 후 삭제", "사용 불가", "새 QR 을 만들까요", "단축 링크 받기", "demo_short", "QR 이 만료됐어요.", "sync_label", "sync_status"))
+            assertFalse("제거된 문구: $gone", ui.contains(gone))
     }
 }

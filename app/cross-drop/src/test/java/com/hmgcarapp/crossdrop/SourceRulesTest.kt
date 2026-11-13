@@ -214,8 +214,8 @@ class SourceRulesTest {
         assertTrue(main("app/Sync.kt").contains("catch (e: kotlinx.coroutines.CancellationException) { throw e }"))
     }
 
-    @Test fun newQrConfirmationAndPdfCloseOffMainThread() {
-        assertTrue(main("ui/Screens.kt").contains("NewQrPolicy.needsConfirm(status)"))
+    @Test fun pdfCloseOffMainThread() {
+        assertFalse("새 QR 확인 팝업 제거", main("ui/Screens.kt").contains("NewQrPolicy"))
         val v = main("ui/Viewers.kt")
         assertTrue("생성한 PdfPages 는 withContext 밖 보관함에 넣고 finally 에서 닫는다", v.contains("holder.set(runCatching { PdfPages(file) }.getOrNull())") && v.contains("holder.getAndSet(null)?.let { p -> CoroutineScope(Dispatchers.IO).launch { p.close() } }") && v.indexOf("} finally {") > v.indexOf("holder.set("))
     }
@@ -226,6 +226,6 @@ class SourceRulesTest {
         assertTrue("다음 시도 시작에서 지운다", c.contains("it.copy(busy = true, pairError = null, pairExpired = false)"))
         assertTrue("연결 끊기·시연 시작에서 지운다", c.contains("_state.update { it.copy(pairError = null, pairExpired = false) }") && c.contains("s.copy(pairError = null, pairExpired = false, demo = true"))
         assertFalse("clearMessage 는 pairError 를 건드리지 않는다", c.substringAfter("fun clearMessage()").substringBefore("\n").contains("pairError"))
-        assertTrue("연결 화면이 pairError 를 표시한다", ui.contains("s.pairError != null ->") && ui.contains("\"pair_error\""))
+        assertTrue("pairError 는 문구가 아니라 단계 배지 실패 표시로만 반영된다", ui.contains("s.pairError != null") && !ui.contains("\"pair_error\""))
     }
 }

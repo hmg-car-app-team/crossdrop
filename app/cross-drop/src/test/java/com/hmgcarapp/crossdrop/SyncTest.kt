@@ -143,7 +143,7 @@ class ReceiverTest {
             link("l2", "https://kko.to/abc"), link("l3", "https://evil.example/x"),
         ), emptySet(), 7, 10)
         assertEquals(Destination(37.4979, 127.0276, "강남역"), r.accepted[0].dest); assertNull(r.accepted[0].note)
-        assertNull(r.accepted[1].dest); assertEquals("단축 링크는 열 수 없어요. 전체 주소 링크를 보내 주세요", r.accepted[1].note)
+        assertNull(r.accepted[1].dest); assertEquals("단축 링크는 열 수 없어요", r.accepted[1].note)
         assertEquals("지원하지 않는 지도 서비스예요", r.accepted[2].note)
         assertTrue("링크 항목은 다운로드하지 않는다", api.downloaded.isEmpty()); assertEquals(setOf("l1", "l2", "l3"), r.handled)
         assertTrue(r.accepted.all { it.kind == ItemKind.LINK && it.localName == null && it.ext == null })
@@ -273,10 +273,10 @@ class DeleteOrderAndGuardTest {
     }
 
     @Test fun receiptTextDistinguishesUnopenableLinks() {
-        fun link(ok: Boolean) = InboxItem("0123456789abcdef", ItemKind.LINK, 0, dest = if (ok) Destination(37.5, 127.0, "a") else null, note = if (ok) null else "단축 링크는 열 수 없어요. 전체 주소 링크를 보내 주세요")
+        fun link(ok: Boolean) = InboxItem("0123456789abcdef", ItemKind.LINK, 0, dest = if (ok) Destination(37.5, 127.0, "a") else null, note = if (ok) null else "단축 링크는 열 수 없어요")
         fun img() = InboxItem("0123456789abcdef", ItemKind.IMAGE, 0, ext = "png", localName = "f_0123456789abcdef.png")
         assertEquals("사진 2개, 목적지 1개, 열 수 없는 링크 2개가 도착했어요", ReceiptText.of(listOf(img(), img(), link(true), link(false), link(false))).banner)
-        assertEquals("단축 링크는 열 수 없어요. 전체 주소 링크를 보내 주세요", ReceiptText.of(listOf(link(false))).message)
+        assertEquals("단축 링크는 열 수 없어요", ReceiptText.of(listOf(link(false))).message)
         assertEquals("열 수 없는 링크 1개가 도착했어요", ReceiptText.of(listOf(link(false))).banner)
         assertNull(ReceiptText.of(listOf(img(), link(true))).message)
         assertEquals("목적지 1개가 도착했어요", ReceiptText.of(listOf(link(true))).banner)

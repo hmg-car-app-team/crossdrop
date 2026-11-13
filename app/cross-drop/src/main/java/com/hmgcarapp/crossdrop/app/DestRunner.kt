@@ -53,7 +53,7 @@ class DestRunner(
                 val res: NaviStatus? = navi.awaitResult(reqId)
                 dispatch(DestEvent.NaviResult(fx.id, if (res == null) null else res is NaviStatus.Success, NaviText.spoken(res)))
             }
-            is DestEffect.SpeakResult -> flow(fx.id) { speaker.speakAndAwait(fx.text); dispatch(DestEvent.ResultSpoken(fx.id)) }
+            is DestEffect.SpeakResult -> flow(fx.id) { if (fx.text.isNotBlank()) speaker.speakAndAwait(fx.text); dispatch(DestEvent.ResultSpoken(fx.id)) }
             is DestEffect.ScheduleExpiry -> { expiryJob?.cancel(); expiryJob = scope.launch { delay(fx.delayMs); dispatch(DestEvent.Expired(fx.id)) } }
             is DestEffect.MarkUsed -> onMarkUsed(fx.itemId)
         }

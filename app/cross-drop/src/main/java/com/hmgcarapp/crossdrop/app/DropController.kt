@@ -92,9 +92,8 @@ class DropController(
     private val random = SecureRandom()
     init {
         StateCodec.sealer = AndroidKeystoreSealer()
-        StateCodec.onSealFailure = { _state.update { it.copy(message = "연결 정보를 안전하게 저장하지 못했어요. 앱을 다시 열면 연결을 다시 해야 할 수 있어요") } }
-        StateCodec.onTokenDropped = { _state.update { it.copy(message = "저장된 연결을 확인할 수 없어요. 연결을 다시 해주세요") } }
-    }
+        StateCodec.onSealFailure = { _state.update { it.copy(message = "저장하지 못했어요") } }
+            }
 
     private val _state = MutableStateFlow(UiState(debuggable = debuggable, serverConfigured = serverUrl != null))
     val state: StateFlow<UiState> = _state
@@ -205,7 +204,7 @@ class DropController(
             updateP { it.copy(consent = true) }
         }
         val api = pump.apiForPairing(_state.value.p.consent, _state.value.demo)
-        if (api == null) { _state.update { it.copy(message = "서버 주소가 설정되지 않아 연결할 수 없어요") }; return@parkedOnly }
+        if (api == null) { _state.update { it.copy(message = "서버에 연결할 수 없어요") }; return@parkedOnly }
         if (_state.value.busy) return@parkedOnly
         // 새 QR 을 만들기 전에 이전 세션을 서버에서 지운다(코드 만료 세션이 서버 슬롯을 차지하지 않게)
         _state.value.p.pairing?.let { old -> pollJob?.cancel(); deleteRemoteSession(old.deviceToken) }
@@ -325,7 +324,7 @@ class DropController(
                 commitThenDelete(api, token, r.handled) { saveNow().durable() }
             }
             if (res == null) { pump.finish(true); return }
-            if (res.rejected > 0) _state.update { it.copy(message = "안전하지 않거나 지원하지 않는 파일 ${res.rejected}개는 받지 않았어요") }
+            if (res.rejected > 0) _state.update { it.copy(message = "지원하지 않는 파일 ${res.rejected}개는 받지 않았어요") }
             if (res.sessionEnded) {
                 val msg = SessionEndText.of(_state.value.p.pairing?.claimed)
                 val unclaimed = _state.value.p.pairing?.claimed == false
@@ -512,7 +511,7 @@ class DropController(
     private fun onWriteResult(r: WriteResult) {
         when (r) {
             WriteResult.WROTE -> _state.update { if (it.corruptKept) it.copy(corruptKept = false) else it }
-            WriteResult.FAILED -> _state.update { it.copy(saveHeld = true, message = "저장하지 못해 이번에는 저장하지 않아요") }
+            WriteResult.FAILED -> _state.update { it.copy(saveHeld = true, message = null) }
             WriteResult.UNCHANGED, WriteResult.HELD -> Unit
         }
     }
@@ -540,7 +539,7 @@ class DropController(
     }
 
     companion object {
-        const val PAIR_FAIL_NOTE = "서버에 연결하지 못했어요. 잠시 후 다시 시도하거나 아래 시연을 사용해 주세요"
+        const val PAIR_FAIL_NOTE = "서버에 연결하지 못했어요"
         const val TICK_MS = 1_000L
         const val PRUNE_EVERY_MS = 30_000L
         const val BANNER_MS = 8_000L

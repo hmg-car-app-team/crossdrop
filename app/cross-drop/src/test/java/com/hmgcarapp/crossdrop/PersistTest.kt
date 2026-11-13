@@ -33,7 +33,7 @@ class PersistTest {
 
     private val file = InboxItem("0123456789abcdef", ItemKind.IMAGE, 111, ext = "jpg", sizeBytes = 2048, localName = "f_0123456789abcdef.jpg", used = false)
     private val link = InboxItem("1123456789abcdef", ItemKind.LINK, 222, dest = Destination(37.5, 127.0, "강남역"), used = true)
-    private val badLink = InboxItem("2123456789abcdef", ItemKind.LINK, 333, note = "단축 링크는 열 수 없어요. 전체 주소 링크를 보내 주세요")
+    private val badLink = InboxItem("2123456789abcdef", ItemKind.LINK, 333, note = "단축 링크는 열 수 없어요")
     private val full = Persisted(true, PairingInfo("ABCD2345", tok, 1, 601_000, 86_400_000, true), listOf(file, link, badLink), 999)
 
     @Test fun roundTrip() {

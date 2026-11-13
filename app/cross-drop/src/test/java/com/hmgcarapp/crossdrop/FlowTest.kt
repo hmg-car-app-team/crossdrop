@@ -37,7 +37,7 @@ class ScreenFlowTest {
         var s = parked()
         s = ScreenFlow.reduce(s, ScreenEvent.SetPage(Page.PAIR)); assertEquals(Page.PAIR, s.page)
         s = ScreenFlow.reduce(s, ScreenEvent.Open("img1")); assertEquals("img1", s.viewing)
-        s = ScreenFlow.reduce(s, ScreenEvent.SetPage(Page.PRIVACY)); assertNull("페이지를 바꾸면 열람은 닫힌다", s.viewing)
+        s = ScreenFlow.reduce(s, ScreenEvent.SetPage(Page.INBOX)); assertNull("페이지를 바꾸면 열람은 닫힌다", s.viewing)
     }
 
     @Test fun drivingStartClosesViewerQrAndSettings() {

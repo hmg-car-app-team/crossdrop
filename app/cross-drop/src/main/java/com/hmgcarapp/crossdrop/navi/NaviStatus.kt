@@ -39,21 +39,19 @@ object NaviReducer {
 }
 
 object NaviText {
-    const val NOT_CONNECTED = "내비 서비스에 연결되지 않았어요"
-    const val NO_RESPONSE = "내비에서 안내 시작을 확인하지 못했어요. 내비 화면에서 경로를 확인해 주세요"
+    const val NOT_CONNECTED = "요청에 실패했어요"
+    /** 무응답은 사용자 문구가 없다(빈 문자열 = 표시·발화 안 함). 확정 실패만 [REQUEST_FAILED]/[NOT_CONNECTED]. */
+    const val NO_RESPONSE = ""
     const val REQUEST_FAILED = "요청에 실패했어요"
     const val ROUTE_STARTED = "경로 안내를 시작했어요"
     const val BUSY = "이전 요청을 처리 중이에요"
     const val PENDING = "경로 요청 중"
 
-    /** SDK 오류 코드 이름 -> 한국어. 원시 코드는 사용자 문구에 노출하지 않는다. */
-    fun errorMessage(codeName: String): String = when (codeName) {
-        "CAUSE_SEARCH_ROUTE" -> "경로를 찾지 못했어요"
-        "CAUSE_SEARCH_ROUTE_OVER_DISTANCE" -> "경로가 너무 멀어요"
-        "CAUSE_SEARCH_ROUTE_TOO_SHORT_DISTANCE" -> "목적지가 너무 가까워요"
-        "CAUSE_LOW_BATTERY" -> "배터리가 부족해 경로를 만들 수 없어요"
-        else -> "경로 요청에 실패했어요"
-    }
+    /** SDK 오류 코드는 사용자 문구에 노출하지 않고, 원인과 무관하게 한 문장으로 알린다(코드는 Failed.code 로 로그에만). */
+    fun errorMessage(codeName: String): String = REQUEST_FAILED
+
+    /** 결과를 받지 못한 무응답(시간 초과·결과 없음)인지. 내비가 실제로 안내를 시작했을 수 있어 실패로 표시하지 않는다. */
+    fun isNoResponse(result: NaviStatus?): Boolean = result == null || (result is NaviStatus.Failed && result.reason.isBlank())
 
     fun spoken(result: NaviStatus?): String = when (result) {
         is NaviStatus.Success -> result.what

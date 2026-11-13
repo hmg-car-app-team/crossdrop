@@ -11,7 +11,7 @@ enum class LinkProblem(val message: String) {
     TOO_LONG("링크가 너무 길어요"),
     NOT_HTTPS("https 링크만 열 수 있어요"),
     UNSUPPORTED_HOST("지원하지 않는 지도 서비스예요"),
-    SHORT_LINK("단축 링크는 열 수 없어요. 전체 주소 링크를 보내 주세요"),
+    SHORT_LINK("단축 링크는 열 수 없어요"),
     NO_COORDINATES("링크에서 목적지 좌표를 찾지 못했어요"),
     OUT_OF_RANGE("목적지 좌표가 올바르지 않아요"),
     NAME_TOO_LONG("장소 이름이 너무 길어요"),

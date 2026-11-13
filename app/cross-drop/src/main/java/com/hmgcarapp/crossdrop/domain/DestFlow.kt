@@ -76,7 +76,7 @@ object DestFlow {
         is DestEvent.Heard -> heard(s, e)
         is DestEvent.NaviResult ->
             if (s.inFlightId != e.id || s.offer == null) s to NONE
-            else s.copy(phase = DestPhase.RESULT, resultLine = e.line) to listOf(DestEffect.SpeakResult(e.id, e.line))
+            else s.copy(phase = DestPhase.RESULT, resultLine = e.line.ifBlank { null }) to listOf(DestEffect.SpeakResult(e.id, e.line))
         is DestEvent.ResultSpoken -> if (s.inFlightId == e.id) finish(s, e.id) else s to NONE
         is DestEvent.Failed -> if (s.inFlightId == e.id) finish(s, e.id) else s to NONE
         is DestEvent.Expired ->

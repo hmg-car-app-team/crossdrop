@@ -15,11 +15,11 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 enum class SyncStatus(val label: String) {
-    NO_CONSENT("연결 동의 전: 서버와 통신하지 않아요"),
-    NO_SERVER("서버 주소 미설정: 서버와 통신하지 않아요"),
-    DEMO("시연 중: 서버와 통신하지 않아요"),
+    NO_CONSENT("연결 전"),
+    NO_SERVER("서버 없음"),
+    DEMO("시연"),
     NO_SESSION("휴대폰 연결 전"),
-    ACTIVE("연결됨: 새 항목을 확인하는 중"),
+    ACTIVE("연결됨"),
     ERROR("서버에 연결하지 못했어요"),
 }
 

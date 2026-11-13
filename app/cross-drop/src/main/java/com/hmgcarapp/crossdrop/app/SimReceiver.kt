@@ -14,7 +14,7 @@ import com.hmgcarapp.crossdrop.domain.Page
  * 사용자 동작(열기·터치 수락 등)은 컨트롤러의 정차 가드(`parkedOnly`)를 그대로 통과해야 하므로 주행 중에는 무시된다.
  *  가상 연결/수신  --ez demo true|false  --es recv photo|pdf|music  --es link kakao|naver|google|apple|short|bad
  *  음성 결과 주입  --es heard "응"   (질문 직후 청취 단계일 때만)
- *  조작            --es touch accept|dismiss  --es page INBOX|PAIR|PRIVACY  --es open image|pdf  --es play music  --ez stop true
+ *  조작            --es touch accept|dismiss  --es page INBOX|PAIR  --es open image|pdf  --es play music  --ez stop true
  *  신호            --es drive PARKED|DRIVING|REAL
  *  보관 시간 앞당김 --ei age_h 25   (시연 항목만; 24시간 지난 항목 자동 삭제 확인)
  */

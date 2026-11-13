@@ -1,9 +1,9 @@
 package com.hmgcarapp.crossdrop.domain
 
-enum class Page(val label: String) { INBOX("받은 항목"), PAIR("휴대폰 연결"), PRIVACY("개인정보·삭제") }
+enum class Page(val label: String) { INBOX("받은 항목"), PAIR("휴대폰 연결") }
 
 /**
- * 화면 상태(순수). 사진·PDF 열람, 페어링 QR, 개인정보/삭제 화면은 **정차일 때만** 열 수 있고,
+ * 화면 상태(순수). 사진·PDF 열람, 페어링 QR 화면은 **정차일 때만** 열 수 있고,
  * 주행이 시작되면(또는 주행 여부를 알 수 없으면) 자동으로 닫힌다. 초기값은 fail-safe 로 주행 중.
  */
 data class ScreenState(
