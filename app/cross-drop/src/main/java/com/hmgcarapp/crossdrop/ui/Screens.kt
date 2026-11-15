@@ -256,7 +256,7 @@ private fun PairPage(c: DropController, s: UiState) {
             // 연결된 뒤에도 새 QR 을 만들 수 있다(휴대폰의 업로드 권한은 연결 후 30분만 유효)
             if (pairing == null || status == PairStatus.CODE_EXPIRED || status == PairStatus.ENDED || status == PairStatus.CONNECTED)
                 PleosButton(if (s.p.consent) "새 QR 만들기" else "휴대폰 연결 시작", onClick = { if (!s.p.consent) ask = true else c.startPairing(true) }, enabled = !s.busy, modifier = Modifier.testTag("btn_pair"))
-            if (pairing != null) PleosButton("연결 끊기", onClick = { c.revokeConsent() }, hierarchy = PleosButtonHierarchy.Secondary, modifier = Modifier.testTag("btn_unpair"))
+            if (pairing != null || s.p.consent) PleosButton("연결 끊기", onClick = { c.revokeConsent() }, hierarchy = PleosButtonHierarchy.Secondary, modifier = Modifier.testTag("btn_unpair"))
         }
     }
     if (ask) PleosPopup(

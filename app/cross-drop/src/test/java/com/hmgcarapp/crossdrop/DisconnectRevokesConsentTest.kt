@@ -7,8 +7,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/** 4차: '연결 끊기' = 동의 철회. 철회 뒤에는 관문이 닫히고(NO_CONSENT) 새 연결은 동의 팝업부터. */
-class Round4RestoreTest {
+/** '연결 끊기' = 동의 철회. 철회 뒤에는 관문이 닫히고(NO_CONSENT) 새 연결은 동의 팝업부터. */
+class DisconnectRevokesConsentTest {
     private val base = "src/main/java/com/hmgcarapp/crossdrop"
 
     @Test fun unpairButtonRevokesConsent_andNextPairAsksAgain() {
